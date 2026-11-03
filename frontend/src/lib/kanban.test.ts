@@ -1,4 +1,4 @@
-import { moveCard, type Column } from "@/lib/kanban";
+import { createId, moveCard, type Column } from "@/lib/kanban";
 
 describe("moveCard", () => {
   const baseColumns: Column[] = [
@@ -21,5 +21,34 @@ describe("moveCard", () => {
     const result = moveCard(baseColumns, "card-1", "col-b");
     expect(result[0].cardIds).toEqual(["card-2"]);
     expect(result[1].cardIds).toEqual(["card-3", "card-1"]);
+  });
+
+  it("moves a card to the end of its own column when dropped on the column", () => {
+    const result = moveCard(baseColumns, "card-1", "col-a");
+    expect(result[0].cardIds).toEqual(["card-2", "card-1"]);
+  });
+
+  it("returns columns unchanged for unknown ids", () => {
+    expect(moveCard(baseColumns, "missing", "card-1")).toBe(baseColumns);
+    expect(moveCard(baseColumns, "card-1", "missing")).toBe(baseColumns);
+  });
+
+  it("returns columns unchanged when dropped on itself", () => {
+    expect(moveCard(baseColumns, "card-1", "card-1")).toBe(baseColumns);
+  });
+
+  it("does not mutate the input", () => {
+    const snapshot = structuredClone(baseColumns);
+    moveCard(baseColumns, "card-1", "col-b");
+    expect(baseColumns).toEqual(snapshot);
+  });
+});
+
+describe("createId", () => {
+  it("prefixes and produces unique ids", () => {
+    const a = createId("card");
+    const b = createId("card");
+    expect(a).toMatch(/^card-/);
+    expect(a).not.toBe(b);
   });
 });
