@@ -160,53 +160,58 @@ Success criteria:
 
 ## Part 8: AI connectivity
 
-- [ ] Add `openai` SDK to the backend; client with `base_url="https://openrouter.ai/api/v1"` and `OPENROUTER_API_KEY` (key in `pm/.env` is present and verified)
-- [ ] `backend/app/ai.py`: function to send messages to `openai/gpt-oss-120b` and return the reply
-- [ ] `POST /api/ai/test` (signed in) asks "What is 2+2?" and returns the reply
+- [x] Add `openai` SDK to the backend; client with `base_url="https://openrouter.ai/api/v1"` and `OPENROUTER_API_KEY` (key in `pm/.env` is present and verified)
+- [x] `backend/app/ai.py`: function to send messages to `openai/gpt-oss-120b` and return the reply
+- [x] `POST /api/ai/test` (signed in) asks "What is 2+2?" and returns the reply
+- [x] `python-dotenv` loads `pm/.env` at import time so `OPENROUTER_API_KEY` is available for local (non-Docker) runs too, matching Docker's `--env-file`
 
 Tests:
-- pytest (mocked client): request sent with the correct model and messages, reply returned
-- pytest live test (marked, skipped without key): "2+2" reply contains "4"
+- [x] pytest (mocked client): request sent with the correct model and messages, reply returned
+- [x] pytest live test (marked, skipped without key): "2+2" reply contains "4"
 
 Success criteria:
-- Live test passes against OpenRouter from inside the container
-- Coverage at least 80%
+- [x] Live test passes against OpenRouter from inside the container
+- [x] Coverage at least 80%
 
 ---
 
 ## Part 9: AI with the Kanban board
 
-- [ ] `POST /api/chat` takes `{message, history: [{role, content}]}`
-- [ ] Backend builds the prompt: system instructions, current board JSON, history, user message
-- [ ] Structured Outputs with a response schema `{reply: string, board: BoardData | null}`
-- [ ] If `board` is returned, validate it with `validate_board` (same rules as Part 6, so the AI cannot add, remove or reorder columns) and save it; respond with `{reply, board}`
-- [ ] Invalid AI board is not saved; reply is still returned with an error note
+- [x] `POST /api/chat` takes `{message, history: [{role, content}]}`
+- [x] Backend builds the prompt: system instructions, current board JSON, history, user message
+- [x] Structured Outputs with a response schema `{reply: string, board: BoardData | null}` (cards sent to/from the model as a list, not the stored id-keyed dict, so the JSON schema can stay strict)
+- [x] If `board` is returned, validate it with `validate_board` (same rules as Part 6, so the AI cannot add, remove or reorder columns) and save it; respond with `{reply, board}`
+- [x] Invalid AI board is not saved; reply is still returned with an error note
+- [x] Malformed AI output (bad JSON, missing keys, or a board that fails model validation) is caught and returns a fallback reply instead of a 500 - found via live Docker testing, where the model occasionally doesn't honor the schema strictly
+- [x] One automatic retry on a malformed response before falling back - found via real user report ("AI assistant is not implementing changes"); root-caused to the model intermittently (roughly 5-15% of requests) not honoring `strict` schema compliance, confirmed by repeated live calls; the retry brought 10/10 live attempts to success in verification. Also strengthened the system prompt to forbid narrating a change ("Moved the card...") without including the updated `board` in the same response
+- [x] `chat()` also validates the returned board against the fixed-column rules itself and retries on failure (not just on a JSON/shape failure) - found via a second real user report ("move all cards from backlog to discovery" -> rejected, "Columns are fixed"); root-caused to the model dropping unmentioned columns from its board response for bulk-move phrasing, reproduced at ~40% failure for that exact phrasing; the retry brought 10/10 live attempts to success in verification
 
 Tests:
-- pytest (mocked AI): reply only leaves board unchanged; create, edit and move card updates are saved; multiple changes in one response; invalid board rejected and not saved; history is passed to the model; unauthenticated returns 401
-- Live test (marked, skipped without key): ask to add a card, confirm it exists in the saved board
+- [x] pytest (mocked AI): reply only leaves board unchanged; create, edit and move card updates are saved; multiple changes in one response; invalid board rejected and not saved; history is passed to the model; unauthenticated returns 401; malformed AI output handled gracefully
+- [x] Live test (marked, skipped without key): ask to add a card, confirm it exists in the saved board
 
 Success criteria:
-- AI can create, edit and move one or more cards through structured output
-- Coverage at least 80%
+- [x] AI can create, edit and move one or more cards through structured output
+- [x] Coverage at least 80%
 
 ---
 
 ## Part 10: AI chat sidebar
 
-- [ ] `ChatSidebar` component: message list, input, send button (purple), loading indicator, collapsible
-- [ ] Conversation history kept in frontend state and sent with each request
-- [ ] When the response contains a board, replace the board state held in `BoardScreen` so the UI refreshes immediately
-- [ ] Styling follows the project color scheme; board remains usable with the sidebar open
-- [ ] Update `frontend/AGENTS.md` and `backend/AGENTS.md`
+- [x] `ChatSidebar` component: message list, input, send button (purple), loading indicator, collapsible
+- [x] Conversation history kept in frontend state and sent with each request
+- [x] When the response contains a board, replace the board state held in `BoardScreen` so the UI refreshes immediately
+- [x] Styling follows the project color scheme; board remains usable with the sidebar open
+- [x] `KanbanBoard`'s column grid changed from a fixed `grid-cols-5` to `grid-flow-col` with `auto-cols-[minmax(240px,1fr)]` and horizontal scroll - found via a live screenshot that the fixed grid squeezed columns too narrow once the sidebar took space, overflowing card buttons into the next column
+- [x] Update `frontend/AGENTS.md` and `backend/AGENTS.md`
 
 Tests:
-- Vitest: sends message with history, renders replies, shows loading and error states, board updates when response includes a board
-- Playwright (chat API route mocked via `page.route`): send a message, see the reply, board refreshes with the AI change
+- [x] Vitest: sends message with history, renders replies, shows loading and error states, board updates when response includes a board
+- [x] Playwright (chat API route mocked via `page.route`): send a message, see the reply, board refreshes with the AI change
 
 Success criteria:
-- User can chat with the AI in the sidebar; AI changes appear on the board without a reload
-- Coverage at least 80% for frontend and backend; all tests pass
+- [x] User can chat with the AI in the sidebar; AI changes appear on the board without a reload
+- [x] Coverage at least 80% for frontend and backend; all tests pass
 
 ---
 

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import db
+from app.ai import ask, chat
 from app.board import Board, validate_board
 
 STATIC_DIR = Path(os.environ.get("STATIC_DIR", Path(__file__).parent.parent / "static"))
@@ -31,6 +32,21 @@ app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
 class Credentials(BaseModel):
     username: str
     password: str
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[ChatMessage] = []
+
+
+class ChatApiResponse(BaseModel):
+    reply: str
+    board: Board | None = None
 
 
 def current_user(request: Request) -> str:
@@ -79,6 +95,26 @@ def update_board(board: Board, username: str = Depends(current_user)) -> Board:
         raise HTTPException(status_code=422, detail=str(error))
     db.save_board(user_id, board)
     return board
+
+
+@app.post("/api/ai/test")
+def ai_test(username: str = Depends(current_user)):
+    return {"reply": ask("What is 2+2?")}
+
+
+@app.post("/api/chat")
+def send_chat_message(request: ChatRequest, username: str = Depends(current_user)) -> ChatApiResponse:
+    user_id = db.get_or_create_user(username)
+    current = db.get_board(user_id)
+    result = chat(request.message, [m.model_dump() for m in request.history], current)
+    if result.board is None:
+        return ChatApiResponse(reply=result.reply)
+    try:
+        validate_board(result.board, current)
+    except ValueError as error:
+        return ChatApiResponse(reply=f"{result.reply} (board update not applied: {error})")
+    db.save_board(user_id, result.board)
+    return ChatApiResponse(reply=result.reply, board=result.board)
 
 
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

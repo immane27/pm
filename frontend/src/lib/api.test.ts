@@ -1,4 +1,4 @@
-import { getBoard, getMe, login, logout, saveBoard } from "@/lib/api";
+import { getBoard, getMe, login, logout, saveBoard, sendChatMessage } from "@/lib/api";
 import { boardFixture } from "@/test/boardFixture";
 
 const mockFetch = (status: number, body: unknown = {}) =>
@@ -84,5 +84,25 @@ describe("board api", () => {
     await expect(saveBoard(boardFixture)).rejects.toThrow("offline");
     await saveBoard(boardFixture);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("chat api", () => {
+  it("sendChatMessage posts the message and history, returns the response", async () => {
+    const history = [{ role: "user" as const, content: "hi" }];
+    const fetchSpy = mockFetch(200, { reply: "hello", board: null });
+
+    const result = await sendChatMessage("add a card", history);
+
+    expect(result).toEqual({ reply: "hello", board: null });
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("/api/chat");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(init?.body as string)).toEqual({ message: "add a card", history });
+  });
+
+  it("sendChatMessage throws when the request fails", async () => {
+    mockFetch(401);
+    await expect(sendChatMessage("hi", [])).rejects.toThrow();
   });
 });

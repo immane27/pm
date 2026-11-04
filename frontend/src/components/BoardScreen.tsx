@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ChatSidebar } from "@/components/ChatSidebar";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { getBoard, saveBoard } from "@/lib/api";
 import type { BoardData } from "@/lib/kanban";
@@ -26,5 +27,12 @@ export const BoardScreen = ({ onLogout }: BoardScreenProps) => {
       </p>
     );
   }
-  return <KanbanBoard board={board} onChange={handleChange} onLogout={onLogout} />;
+  return (
+    <div className="flex">
+      <div className="min-w-0 flex-1">
+        <KanbanBoard board={board} onChange={handleChange} onLogout={onLogout} />
+      </div>
+      <ChatSidebar onBoardUpdate={setBoard} />
+    </div>
+  );
 };

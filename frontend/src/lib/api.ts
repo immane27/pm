@@ -44,3 +44,24 @@ export const saveBoard = (board: BoardData): Promise<Response> => {
   saveQueue = save.catch(() => undefined);
   return save;
 };
+
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type ChatResponse = {
+  reply: string;
+  board: BoardData | null;
+};
+
+export const sendChatMessage = async (
+  message: string,
+  history: ChatMessage[]
+): Promise<ChatResponse> => {
+  const response = await post("/api/chat", { message, history });
+  if (!response.ok) {
+    throw new Error("Chat request failed");
+  }
+  return response.json();
+};
